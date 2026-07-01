@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Botanica</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500;600&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#f5f2ee;--surface:#fff;--text:#1a1a18;--muted:#7a7870;
+      --accent:#2d6a4f;--accent2:#40916c;--border:#e8e4de;--old:#b0ada7;
+      --r:18px;--rb:10px;
+      --sh:0 2px 16px rgba(0,0,0,.07);--sh2:0 20px 60px rgba(0,0,0,.16);
+      --t:.28s cubic-bezier(.4,0,.2,1);
+    }
+    html{scroll-behavior:smooth}
+    body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+    /* ── IRIS WIPE ── */
+    #iris-overlay{
+      position:fixed;inset:0;z-index:9999;pointer-events:none;
+      display:flex;align-items:center;justify-content:center;
+    }
+    #iris-svg{position:absolute;inset:0;width:100%;height:100%}
+    #iris-clip-path circle{r:0;cx:50%;cy:50%;transform-origin:center}
+    #iris-rect{fill:var(--accent);clip-path:url(#irisClip);width:100%;height:100%}
+    .iris-petal{transform-origin:50% 50%}
+
+    /* ── HEADER ── */
+    .site-header{
+      padding:0 48px;height:68px;display:flex;align-items:center;justify-content:space-between;
+      border-bottom:1px solid var(--border);background:rgba(245,242,238,.88);
+      position:sticky;top:0;z-index:100;backdrop-filter:blur(12px);
+    }
+    .logo{font-family:'Playfair Display',serif;font-size:22px;font-weight:500;color:var(--text);text-decoration:none;letter-spacing:-.3px}
+    .logo span{color:var(--accent)}
+    .header-nav{display:flex;gap:4px;list-style:none}
+    .header-nav a{
+      font-size:14px;color:var(--muted);text-decoration:none;padding:8px 14px;border-radius:8px;
+      transition:color var(--t),background var(--t);cursor:pointer;display:block;
+    }
+    .header-nav a:hover{color:var(--text);background:var(--border)}
+    .header-nav a.active{color:var(--accent);font-weight:500}
+    .header-actions{display:flex;gap:8px;align-items:center}
+    .icon-btn{
+      background:none;border:none;cursor:pointer;color:var(--text);
+      width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+      transition:background var(--t),transform var(--t);position:relative;
+    }
+    .icon-btn:hover{background:var(--border);transform:scale(1.05)}
+    .icon-btn:active{transform:scale(.93)}
+    .cart-count{
+      position:absolute;top:5px;right:5px;min-width:17px;height:17px;padding:0 4px;
+      background:var(--accent);color:#fff;border-radius:100px;font-size:10px;font-weight:600;
+      display:flex;align-items:center;justify-content:center;
+      transition:transform .2s cubic-bezier(.34,1.56,.64,1),opacity var(--t);
+    }
+    .cart-count.bump{animation:bump .35s cubic-bezier(.34,1.56,.64,1)}
+    @keyframes bump{0%,100%{transform:scale(1)}50%{transform:scale(1.5)}}
+    .cart-count.hidden{opacity:0;transform:scale(0)}
+
+    /* ── DRAWER ── */
+    .drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;z-index:200;transition:opacity .3s;backdrop-filter:blur(2px)}
+    .drawer-overlay.open{opacity:1;pointer-events:all}
+    .cart-drawer{
+      position:fixed;top:0;right:0;bottom:0;width:400px;max-width:100vw;
+      background:var(--surface);z-index:201;transform:translateX(100%);
+      transition:transform .35s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;
+      box-shadow:-8px 0 48px rgba(0,0,0,.12);
+    }
+    .cart-drawer.open{transform:translateX(0)}
+    .drawer-head{padding:28px 28px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .drawer-head h2{font-family:'Playfair Display',serif;font-size:20px;font-weight:400}
+    .drawer-close{background:none;border:none;cursor:pointer;color:var(--muted);width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:background var(--t),color var(--t)}
+    .drawer-close:hover{background:var(--border);color:var(--text)}
+    .drawer-body{flex:1;overflow-y:auto;padding:20px 28px;display:flex;flex-direction:column;gap:16px}
+    .drawer-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--muted);text-align:center}
+    .drawer-empty svg{opacity:.3}
+    .cart-item{display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--border);animation:slideIn .25s var(--t)}
+    @keyframes slideIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+    .cart-item-img{width:72px;height:72px;object-fit:cover;border-radius:10px;flex-shrink:0}
+    .cart-item-info{flex:1;min-width:0}
+    .cart-item-name{font-size:14px;font-weight:500;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cart-item-latin{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:8px}
+    .cart-item-row{display:flex;align-items:center;justify-content:space-between}
+    .cart-item-price{font-size:15px;font-weight:500}
+    .qty-ctrl{display:flex;align-items:center;gap:8px}
+    .qty-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;color:var(--text);transition:background var(--t)}
+    .qty-btn:hover{background:var(--border)}
+    .qty-val{font-size:14px;font-weight:500;min-width:20px;text-align:center}
+    .item-remove{background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;border-radius:6px;transition:color var(--t),background var(--t);flex-shrink:0}
+    .item-remove:hover{color:#e11d48;background:#fee2e2}
+    .drawer-foot{padding:20px 28px 28px;border-top:1px solid var(--border)}
+    .drawer-total{display:flex;justify-content:space-between;margin-bottom:16px;font-size:15px}
+    .drawer-total span:last-child{font-weight:600;font-size:18px}
+    .checkout-btn{width:100%;padding:14px;background:var(--text);color:#fff;border:none;border-radius:var(--rb);font-family:'Inter',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:background var(--t),transform var(--t)}
+    .checkout-btn:hover{background:var(--accent)}
+    .checkout-btn:active{transform:scale(.98)}
+
+    /* ── TOAST ── */
+    .toast-stack{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:9998;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+    .toast{background:var(--text);color:#fff;padding:10px 20px;border-radius:100px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.2);animation:toastIn .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap}
+    .toast.out{animation:toastOut .25s forwards}
+    @keyframes toastIn{from{opacity:0;transform:translateY(16px) scale(.9)}to{opacity:1;transform:none}}
+    @keyframes toastOut{to{opacity:0;transform:translateY(8px) scale(.95)}}
+    .toast.green{background:var(--accent)}
+    .toast.red{background:#e11d48}
+
+    /* ── PAGES ── */
+    .page{display:none;animation:pageIn .4s ease}
+    .page.active{display:block}
+    @keyframes pageIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+    /* ── CATALOG PAGE ── */
+    .catalog{max-width:1320px;margin:0 auto;padding:56px 48px 96px}
+    .catalog-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:48px;gap:24px}
+    .catalog-title-group{max-width:540px}
+    .eyebrow{font-size:11px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+    .page-title{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,44px);font-weight:400;line-height:1.15;letter-spacing:-.5px}
+    .page-sub{margin-top:12px;font-size:15px;color:var(--muted);font-weight:300;line-height:1.65}
+    .catalog-controls{display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+    .catalog-filters{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .filter-btn{padding:8px 18px;border-radius:100px;border:1.5px solid var(--border);background:var(--surface);font-size:13px;color:var(--muted);cursor:pointer;transition:all var(--t);font-family:'Inter',sans-serif}
+    .filter-btn:hover{border-color:var(--accent);color:var(--accent)}
+    .filter-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+    .catalog-sort{padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);font-family:'Inter',sans-serif;font-size:13px;color:var(--muted);cursor:pointer;appearance:none;outline:none;transition:border-color var(--t)}
+    .catalog-sort:hover,.catalog-sort:focus{border-color:var(--accent);color:var(--text)}
+    .product-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;perspective:1200px}
+    .product-card{background:var(--surface);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);position:relative;cursor:pointer;transform-style:preserve-3d;will-change:transform;transition:box-shadow var(--t)}
+    .product-card:hover{box-shadow:var(--sh2)}
+    .product-card.hidden{display:none}
+    .card-inner{transform-style:preserve-3d;border-radius:var(--r);overflow:hidden}
+    .card-media{position:relative;overflow:hidden;aspect-ratio:3/4;background:var(--bg)}
+    .product-card--wide .card-media{aspect-ratio:16/9}
+    .card-media img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .55s cubic-bezier(.4,0,.2,1)}
+    .product-card:hover .card-media img{transform:scale(1.07)}
+    .card-shine{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.25) 0%,transparent 70%);opacity:0;pointer-events:none;z-index:4;transition:opacity .2s;border-radius:var(--r)}
+    .product-card:hover .card-shine{opacity:1}
+    .card-badges{position:absolute;top:14px;left:14px;display:flex;flex-direction:column;gap:6px;z-index:2}
+    .badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:100px;font-size:11px;font-weight:600;letter-spacing:.3px;line-height:1}
+    .badge-new{background:#d8f3dc;color:#1b4332}
+    .badge-sale{background:#fee2e2;color:#991b1b}
+    .badge-rare{background:#fef3c7;color:#92400e}
+    .card-wishlist{position:absolute;top:14px;right:14px;z-index:3;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.9);backdrop-filter:blur(6px);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.75);transition:opacity var(--t),transform var(--t),background var(--t);box-shadow:0 2px 10px rgba(0,0,0,.12)}
+    .product-card:hover .card-wishlist{opacity:1;transform:scale(1)}
+    .card-wishlist:hover{background:#fff;transform:scale(1.1)!important}
+    .card-wishlist.liked{opacity:1;transform:scale(1)!important}
+    .card-wishlist.liked svg{fill:#e11d48;stroke:#e11d48}
+    .card-wishlist svg{transition:fill .2s,stroke .2s}
+    .card-quick-add{position:absolute;bottom:0;left:0;right:0;z-index:2;padding:14px 16px;background:linear-gradient(to top,rgba(20,20,18,.92) 0%,rgba(20,20,18,.6) 100%);backdrop-filter:blur(4px);transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+    .product-card:hover .card-quick-add{transform:translateY(0)}
+    .quick-add-btn{width:100%;padding:10px;background:#fff;color:var(--text);border:none;border-radius:8px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:background var(--t),color var(--t)}
+    .quick-add-btn:hover{background:var(--accent);color:#fff}
+    .card-body{padding:18px 20px 20px}
+    .card-category{font-size:11px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+    .card-name{font-family:'Playfair Display',serif;font-size:17px;font-weight:400;line-height:1.3;color:var(--text);margin-bottom:4px;transition:color var(--t)}
+    .product-card:hover .card-name{color:var(--accent)}
+    .card-latin{font-size:12px;color:var(--old);font-style:italic;margin-bottom:12px}
+    .card-meta{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+    .care-icon{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
+    .card-footer{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .card-pricing{display:flex;align-items:baseline;gap:8px}
+    .price-current{font-size:18px;font-weight:600;letter-spacing:-.3px}
+    .price-old{font-size:13px;color:var(--old);text-decoration:line-through}
+    .add-to-cart{padding:9px 18px;background:var(--text);color:#fff;border:none;border-radius:var(--rb);font-family:'Inter',sans-serif;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background var(--t),transform var(--t),box-shadow var(--t)}
+    .add-to-cart:hover{background:var(--accent);box-shadow:0 4px 14px rgba(45,106,79,.35)}
+    .add-to-cart:active{transform:scale(.95)}
+    .add-to-cart.added{background:var(--accent)}
+    .product-card--wide{grid-column:span 2}
+    .catalog-footer{margin-top:56px;display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap}
+    .load-more-btn{padding:14px 44px;background:transparent;border:1.5px solid var(--text);border-radius:var(--rb);font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--text);cursor:pointer;transition:all var(--t);position:relative;overflow:hidden}
+    .load-more-btn::after{content:'';position:absolute;inset:0;background:var(--text);transform:scaleX(0);transform-origin:left;transition:transform .35s cubic-bezier(.4,0,.2,1);z-index:-1}
+    .load-more-btn:hover{color:#fff}
+    .load-more-btn:hover::after{transform:scaleX(1)}
+    .load-more-btn:disabled{opacity:.4;cursor:default}
+    .items-count{font-size:13px;color:var(--muted)}
+
+    /* ── ABOUT PAGE ── */
+    .about-hero{background:linear-gradient(135deg,#1b4332 0%,#2d6a4f 60%,#40916c 100%);color:#fff;padding:100px 48px 80px;position:relative;overflow:hidden}
+    .about-hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+    .about-hero-inner{max-width:680px;margin:0 auto;position:relative;z-index:1;text-align:center}
+    .about-hero .eyebrow{color:rgba(255,255,255,.7)}
+    .about-hero .page-title{color:#fff;font-size:clamp(32px,5vw,56px)}
+    .about-hero .page-sub{color:rgba(255,255,255,.8);font-size:16px;max-width:520px;margin:16px auto 0}
+    .about-content{max-width:1100px;margin:0 auto;padding:72px 48px 96px}
+    .about-grid{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;margin-bottom:80px}
+    .about-grid.reverse{direction:rtl}
+    .about-grid.reverse>*{direction:ltr}
+    .about-img{border-radius:20px;overflow:hidden;aspect-ratio:4/3}
+    .about-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s ease}
+    .about-img:hover img{transform:scale(1.04)}
+    .about-text h2{font-family:'Playfair Display',serif;font-size:32px;font-weight:400;line-height:1.25;margin-bottom:18px}
+    .about-text p{font-size:15px;color:var(--muted);line-height:1.75;margin-bottom:14px}
+    .about-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;padding:48px;background:var(--surface);border-radius:24px;box-shadow:var(--sh);margin-bottom:72px}
+    .stat-item{text-align:center}
+    .stat-num{font-family:'Playfair Display',serif;font-size:48px;font-weight:400;color:var(--accent);display:block;line-height:1}
+    .stat-label{font-size:13px;color:var(--muted);margin-top:8px}
+    .team-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+    .team-card{background:var(--surface);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);transition:transform var(--t),box-shadow var(--t)}
+    .team-card:hover{transform:translateY(-4px);box-shadow:var(--sh2)}
+    .team-img{aspect-ratio:1;overflow:hidden}
+    .team-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s ease}
+    .team-card:hover .team-img img{transform:scale(1.06)}
+    .team-info{padding:18px 20px 20px}
+    .team-name{font-family:'Playfair Display',serif;font-size:18px;font-weight:400;margin-bottom:4px}
+    .team-role{font-size:13px;color:var(--accent);font-weight:500;margin-bottom:10px}
+    .team-bio{font-size:13px;color:var(--muted);line-height:1.6}
+
+    /* ── CARE PAGE ── */
+    .care-content{max-width:1100px;margin:0 auto;padding:72px 48px 96px}
+    .care-hero{background:linear-gradient(135deg,#d8f3dc 0%,#f5f2ee 100%);padding:80px 48px 72px;text-align:center}
+    .care-hero .page-title{max-width:600px;margin:0 auto}
+    .care-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:64px}
+    .care-card{background:var(--surface);border-radius:var(--r);padding:32px 28px;box-shadow:var(--sh);transition:transform var(--t),box-shadow var(--t);position:relative;overflow:hidden}
+    .care-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .4s ease}
+    .care-card:hover::before{transform:scaleX(1)}
+    .care-card:hover{transform:translateY(-4px);box-shadow:var(--sh2)}
+    .care-icon-big{width:56px;height:56px;background:#d8f3dc;border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;transition:background var(--t)}
+    .care-card:hover .care-icon-big{background:var(--accent)}
+    .care-card:hover .care-icon-big svg{stroke:#fff}
+    .care-card:hover .care-icon-big svg path,.care-card:hover .care-icon-big svg circle{stroke:#fff}
+    .care-icon-big svg{transition:stroke var(--t)}
+    .care-card h3{font-family:'Playfair Display',serif;font-size:20px;font-weight:400;margin-bottom:12px}
+    .care-card p{font-size:14px;color:var(--muted);line-height:1.7}
+    .care-tips{margin-top:72px}
+    .care-tips h2{font-family:'Playfair Display',serif;font-size:32px;font-weight:400;margin-bottom:36px}
+    .tip-list{display:flex;flex-direction:column;gap:20px}
+    .tip-item{display:flex;gap:20px;padding:24px;background:var(--surface);border-radius:var(--r);box-shadow:var(--sh);transition:transform var(--t)}
+    .tip-item:hover{transform:translateX(6px)}
+    .tip-num{font-family:'Playfair Display',serif;font-size:36px;font-weight:400;color:var(--border);line-height:1;flex-shrink:0;width:48px}
+    .tip-body h4{font-size:16px;font-weight:500;margin-bottom:6px}
+    .tip-body p{font-size:14px;color:var(--muted);line-height:1.65}
+
+    /* ── DELIVERY PAGE ── */
+    .delivery-hero{background:linear-gradient(135deg,#1b4332 0%,#2d6a4f 100%);color:#fff;padding:80px 48px;text-align:center}
+    .delivery-hero .eyebrow{color:rgba(255,255,255,.7)}
+    .delivery-hero .page-title{color:#fff}
+    .delivery-hero .page-sub{color:rgba(255,255,255,.75);max-width:520px;margin:14px auto 0}
+    .delivery-content{max-width:1100px;margin:0 auto;padding:72px 48px 96px}
+    .delivery-zones{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:64px}
+    .zone-card{background:var(--surface);border-radius:var(--r);padding:28px 24px;box-shadow:var(--sh);border:2px solid transparent;transition:border-color var(--t),transform var(--t),box-shadow var(--t);cursor:pointer;position:relative}
+    .zone-card:hover,.zone-card.selected{border-color:var(--accent);transform:translateY(-3px);box-shadow:var(--sh2)}
+    .zone-card.selected::after{content:'✓';position:absolute;top:16px;right:16px;width:24px;height:24px;background:var(--accent);color:#fff;border-radius:50%;font-size:12px;display:flex;align-items:center;justify-content:center}
+    .zone-name{font-family:'Playfair Display',serif;font-size:20px;font-weight:400;margin-bottom:6px}
+    .zone-price{font-size:24px;font-weight:600;color:var(--accent);margin-bottom:12px}
+    .zone-details{font-size:13px;color:var(--muted);line-height:1.65}
+    .zone-tag{display:inline-block;padding:3px 10px;border-radius:100px;background:#d8f3dc;color:var(--accent);font-size:11px;font-weight:600;margin-bottom:12px}
+    /* calculator */
+    .delivery-calc{background:var(--surface);border-radius:24px;padding:40px;box-shadow:var(--sh);margin-bottom:64px}
+    .delivery-calc h2{font-family:'Playfair Display',serif;font-size:28px;font-weight:400;margin-bottom:28px}
+    .calc-form{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    .form-group{display:flex;flex-direction:column;gap:8px}
+    .form-group label{font-size:13px;font-weight:500;color:var(--muted)}
+    .form-group input,.form-group select{padding:12px 16px;border:1.5px solid var(--border);border-radius:var(--rb);font-family:'Inter',sans-serif;font-size:14px;color:var(--text);background:var(--bg);outline:none;transition:border-color var(--t)}
+    .form-group input:focus,.form-group select:focus{border-color:var(--accent)}
+    .calc-result{margin-top:24px;padding:20px 24px;background:linear-gradient(135deg,#d8f3dc,#f5f2ee);border-radius:var(--rb);display:none}
+    .calc-result.show{display:block;animation:slideIn .3s ease}
+    .calc-result-row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:15px}
+    .calc-result-row.total{font-weight:600;font-size:17px;border-top:1px solid var(--border);padding-top:12px;margin-top:8px}
+    .calc-btn{grid-column:1/-1;padding:14px;background:var(--text);color:#fff;border:none;border-radius:var(--rb);font-family:'Inter',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:background var(--t);margin-top:4px}
+    .calc-btn:hover{background:var(--accent)}
+    /* track */
+    .delivery-track{background:var(--surface);border-radius:24px;padding:40px;box-shadow:var(--sh);margin-bottom:64px}
+    .delivery-track h2{font-family:'Playfair Display',serif;font-size:28px;font-weight:400;margin-bottom:8px}
+    .delivery-track p{font-size:14px;color:var(--muted);margin-bottom:24px}
+    .track-input-row{display:flex;gap:12px}
+    .track-input{flex:1;padding:12px 16px;border:1.5px solid var(--border);border-radius:var(--rb);font-family:'Inter',sans-serif;font-size:14px;outline:none;transition:border-color var(--t)}
+    .track-input:focus{border-color:var(--accent)}
+    .track-btn{padding:12px 24px;background:var(--accent);color:#fff;border:none;border-radius:var(--rb);font-family:'Inter',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:background var(--t),transform var(--t)}
+    .track-btn:hover{background:var(--accent-hover,#1b4332)}
+    .track-btn:active{transform:scale(.96)}
+    .track-timeline{margin-top:28px;display:none}
+    .track-timeline.show{display:block;animation:slideIn .3s ease}
+    .track-step{display:flex;gap:20px;padding-bottom:24px;position:relative}
+    .track-step:not(:last-child)::before{content:'';position:absolute;left:15px;top:32px;bottom:0;width:2px;background:var(--border)}
+    .track-dot{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;z-index:1}
+    .track-dot.done{border-color:var(--accent);background:var(--accent)}
+    .track-dot.done svg{stroke:#fff}
+    .track-dot.active{border-color:var(--accent);background:#d8f3dc}
+    .track-dot.active svg{stroke:var(--accent)}
+    .track-body h4{font-size:14px;font-weight:500;margin-bottom:3px}
+    .track-body p{font-size:13px;color:var(--muted)}
+    /* faq */
+    .delivery-faq h2{font-family:'Playfair Display',serif;font-size:28px;font-weight:400;margin-bottom:28px}
+    .faq-item{border-bottom:1px solid var(--border)}
+    .faq-q{display:flex;justify-content:space-between;align-items:center;padding:18px 0;cursor:pointer;font-size:15px;font-weight:500;gap:16px;transition:color var(--t)}
+    .faq-q:hover{color:var(--accent)}
+    .faq-q svg{flex-shrink:0;transition:transform .3s}
+    .faq-item.open .faq-q svg{transform:rotate(180deg)}
+    .faq-a{font-size:14px;color:var(--muted);line-height:1.75;padding-bottom:18px;display:none}
+    .faq-item.open .faq-a{display:block;animation:slideIn .25s ease}
+
+    /* ── PARALLAX CANVAS ── */
+    #parallax-canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:1100px){.product-grid{grid-template-columns:repeat(3,1fr)}.about-grid{gap:40px}.delivery-zones{grid-template-columns:1fr 1fr}.team-grid{grid-template-columns:1fr 1fr}}
+    @media(max-width:780px){
+      .site-header{padding:0 20px}.header-nav{display:none}
+      .catalog,.about-content,.care-content,.delivery-content{padding-left:20px;padding-right:20px;padding-top:36px}
+      .catalog-header{flex-direction:column;align-items:flex-start;margin-bottom:32px}
+      .catalog-controls{align-items:flex-start}.catalog-filters{justify-content:flex-start}
+      .product-grid{grid-template-columns:repeat(2,1fr);gap:16px;perspective:none}
+      .product-card--wide{grid-column:span 2}
+      .card-body{padding:13px 14px 15px}.card-name{font-size:15px}
+      .card-wishlist{opacity:1;transform:scale(1)!important}.card-quick-add{display:none}
+      .about-grid,.calc-form{grid-template-columns:1fr}.about-grid.reverse{direction:ltr}
+      .about-stats{grid-template-columns:1fr 1fr}
+      .team-grid,.care-grid,.delivery-zones{grid-template-columns:1fr}
+      .about-hero,.care-hero,.delivery-hero{padding:60px 20px 52px}
+      .track-input-row{flex-direction:column}
+    }
+    @media(max-width:480px){.product-grid{gap:12px}.add-to-cart{padding:8px 12px;font-size:12px}.price-current{font-size:16px}.cart-drawer{width:100vw}}
+  </style>
+</head>
+<body>
+
+<!-- IRIS WIPE SVG -->
+<svg id="iris-svg" style="position:fixed;inset:0;width:100%;height:100%;z-index:9999;pointer-events:none" viewBox="0 0 100 100" preserveAspectRatio="none">
+  <defs>
+    <clipPath id="irisClip" clipPathUnits="objectBoundingBox">
+      <circle id="irisCircle" cx=".5" cy=".5" r="0"/>
+    </clipPath>
+  </defs>
+  <rect id="irisRect" x="0" y="0" width="1" height="1" fill="#2d6a4f" clip-path="url(#irisClip)" opacity="0"/>
+</svg>
+
+<!-- PARALLAX BG -->
+<canvas id="parallax-canvas"></canvas>
+
+<!-- HEADER -->
+<header class="site-header">
+  <a href="#" class="logo" data-nav="catalog">Bo<span>ta</span>nica</a>
+  <nav><ul class="header-nav">
+    <li><a data-nav="catalog" class="active">Каталог</a></li>
+    <li><a data-nav="about">О нас</a></li>
+    <li><a data-nav="care">Уход</a></li>
+    <li><a data-nav="delivery">Доставка</a></li>
+  </ul></nav>
+  <div class="header-actions">
+    <button class="icon-btn" id="cartBtn">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      <span class="cart-count hidden" id="cartCount">0</span>
+    </button>
+  </div>
+</header>
+
+<!-- CART DRAWER -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<aside class="cart-drawer" id="cartDrawer">
+  <div class="drawer-head">
+    <h2>Корзина</h2>
+    <button class="drawer-close" id="drawerClose"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="drawer-body" id="drawerBody">
+    <div class="drawer-empty" id="drawerEmpty">
+      <svg width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      <p>Корзина пока пуста</p>
+    </div>
+  </div>
+  <div class="drawer-foot" id="drawerFoot" style="display:none">
+    <div class="drawer-total"><span>Итого</span><span id="drawerTotal">0 ₽</span></div>
+    <button class="checkout-btn" onclick="navigateTo('delivery')">Оформить заказ</button>
+  </div>
+</aside>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<!-- ════ PAGE: CATALOG ════ -->
+<div class="page active" id="page-catalog">
+<section class="catalog">
+  <div class="catalog-header">
+    <div class="catalog-title-group">
+      <p class="eyebrow">Коллекция 2025</p>
+      <h1 class="page-title">Живые растения<br>для вашего дома</h1>
+      <p class="page-sub">Тщательно отобранные экземпляры с подробными инструкциями по уходу и гарантией приживаемости.</p>
+    </div>
+    <div class="catalog-controls">
+      <div class="catalog-filters" id="filters">
+        <button class="filter-btn active" data-filter="all">Все</button>
+        <button class="filter-btn" data-filter="Листовые">Листовые</button>
+        <button class="filter-btn" data-filter="Суккуленты">Суккуленты</button>
+        <button class="filter-btn" data-filter="Цветущие">Цветущие</button>
+        <button class="filter-btn" data-filter="Воздушные">Воздушные</button>
+      </div>
+      <select class="catalog-sort" id="sortSelect">
+        <option value="default">По умолчанию</option>
+        <option value="price-asc">Цена: по возрастанию</option>
+        <option value="price-desc">Цена: по убыванию</option>
+        <option value="name">По названию</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="product-grid" id="productGrid">
+
+    <article class="product-card product-card--wide" data-category="Листовые" data-price="3200" data-name="Монстера деликатная" data-img="https://images.unsplash.com/photo-1637967886160-fd78dc3ce3f5?w=900&auto=format&fit=crop&q=80" data-latin="Monstera deliciosa">
+      <div class="card-inner">
+        <div class="card-media">
+          <img src="https://images.unsplash.com/photo-1637967886160-fd78dc3ce3f5?w=900&auto=format&fit=crop&q=80" alt="Монстера деликатная" loading="lazy"/>
+          <div class="card-badges"><span class="badge badge-new">Новинка</span></div>
+          <button class="card-wishlist"><svg width="16" height="16" fill="none" stroke="#333" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+          <div class="card-quick-add"><button class="quick-add-btn">Быстро добавить</button></div>
+          <div class="card-shine"></div>
+        </div>
+        <div class="card-body">
+          <p class="card-category">Листовые</p><h2 class="card-name">Монстера деликатная</h2>
+          <p class="card-latin">Monstera deliciosa</p>
+          <div class="card-meta"><span class="care-icon">🌿 Лёгкий уход</span><span class="care-icon">🌤 Полутень</span></div>
+          <div class="card-footer"><div class="card-pricing"><span class="price-current">3 200 ₽</span><span class="price-old">4 100 ₽</span></div><button class="add-to-cart">В корзину</button></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="product-card" data-category="Листовые" data-price="2560" data-name="Фикус лировидный" data-img="https://images.unsplash.com/photo-1632207691143-643e2a9a9361?w=500&auto=format&fit=crop&q=80" data-latin="Ficus lyrata">
+      <div class="card-inner">
+        <div class="card-media">
+          <img src="https://images.unsplash.com/photo-1632207691143-643e2a9a9361?w=500&auto=format&fit=crop&q=80" alt="Фикус лировидный" loading="lazy"/>
+          <div class="card-badges"><span class="badge badge-sale">−20%</span></div>
+          <button class="card-wishlist"><svg width="16" height="16" fill="none" stroke="#333" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+          <div class="card-quick-add"><button class="quick-add-btn">Быстро добавить</button></div>
+          <div class="card-shine"></div>
+        </div>
+        <div class="card-body">
+          <p class="card-category">Листовые</p><h2 class="card-name">Фикус лировидный</h2>
+          <p class="card-latin">Ficus lyrata</p>
+          <div class="card-meta"><span class="care-icon">☀️ Яркий свет</span></div>
+          <div class="card-footer"><div class="card-pricing"><span class="price-current">2 560 ₽</span><span class="price-old">3 200 ₽</span></div><button class="add-to-cart">В корзину</button></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="product-card" data-category="Суккуленты" data-price="890" data-name="Кактус Ацтекиум" data-img="https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=500&auto=format&fit=crop&q=80" data-latin="Aztekium ritteri">
+      <div class="card-inner">
+        <div class="card-media">
+          <img src="https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=500&auto=format&fit=crop&q=80" alt="Кактус Ацтекиум" loading="lazy"/>
+          <div class="card-badges"><span class="badge badge-rare">Редкий</span></div>
+          <button class="card-wishlist"><svg width="16" height="16" fill="none" stroke="#333" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+          <div class="card-quick-add"><button class="quick-add-btn">Быстро добавить</button></div>
+          <div class="card-shine"></div>
+        </div>
+        <div class="card-body">
+          <p class="card-category">Суккуленты</p><h2 class="card-name">Кактус Ацтекиум</h2>
+          <p class="card-latin">Aztekium ritteri</p>
+          <div class="card-meta"><span class="care-icon">☀️ Прямой свет</span></div>
+          <div class="card-footer"><div class="card-pricing"><span class="price-current">890 ₽</span></div><button class="add-to-cart">В корзину</button></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="product-card" data-category="Цветущие" data-price="1750" data-name="Орхидея фаленопсис" data-img="https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=500&auto=format&fit=crop&q=80" data-latin="Phalaenopsis amabilis">
+      <div class="card-inner">
+        <div class="card-media">
+          <img src="https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=500&auto=format&fit=crop&q=80" alt="Орхидея" loading="lazy"/>
+          <div class="card-badges"><span class="badge badge-new">Новинка</span></div>
+          <button class="card-wishlist"><svg width="16" height="16" fill="none" stroke="#333" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+          <div class="card-quick-add"><button class="quick-add-btn">Быстро добавить</button></div>
+          <div class="card-shine"></div>
+        </div>
+        <div class="card-body">
+          <p class="card-category">Цветущие</p><h2 class="card-name">Орхидея фаленопсис</h2>
+          <p class="card-latin">Phalaenopsis amabilis</p>
+          <div class="card-meta"><span class="care-icon">🌤 Средний уход</span></div>
+          <div class="card-footer"><div class="card-pricing"><span class="price-current">1 750 ₽</span></div><button class="add-to-cart">В корзину</button></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="product-card" data-category="Листовые" data-price="2100" data-name="Пахира акватика" data-img="https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=500&auto=format&fit=crop&q=80" data-latin="Pachira aquatica">
+      <div class="card-inner">
+        <div class="card-media">
+          <img src="https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=500&auto=format&fit=crop&q=80" alt="Пахира акватика" loading="lazy"/>
+          <button class="card-wishlist"><svg width="16" height="16" fill="none" stroke="#333" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+          <div class="card-quick-add"><button class="quick-add-btn">Быстро добавить</button></div>
+          <div class="card-shine"></div>
+        </div>
+        <div class="card-body">
+          <p class="card-category">Листовые</p><h2 class="card-name">Пахира акватика</h2>
+          <p class="card-latin">Pachira aquatica</p>
+          <div class="card-meta"><span class="care-icon">🌿 Лёгкий уход</span></div>
+          <div class="card-footer"><div class="card-pricing"><span class="price-current">2 100 ₽</span></div><button class="add-to-cart">В корзину</button></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="product-card" data-category="Воздушные" data-price="650" data-name="Тилландсия" data-img="https://images.unsplash.com/photo-1509423350716-97f9360b4e09?w=500&auto=format&fit=crop&q=80" data-latin="Tillandsia xerographica">
+      <div class="card-inner">
+        <div class="card-media">
+          <img src="https://images.unsplash.com/photo-1509423350716-97f9360b4e09?w=500&auto=format&fit=crop&q=80" alt="Тилландсия" loading="lazy"/>
+          <div class="card-badges"><span class="badge badge-rare">Воздушная</span></div>
+          <button class="card-wishlist"><svg width="16" height="16" fill="none" stroke="#333" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+          <div class="card-quick-add"><button class="quick-add-btn">Быстро добавить</button></div>
+          <div class="card-shine"></div>
+        </div>
+        <div class="card-body">
+          <p class="card-category">Воздушные</p><h2 class="card-name">Тилландсия</h2>
+          <p class="card-latin">Tillandsia xerographica</p>
+          <div class="card-meta"><span class="care-icon">💧 Без горшка</span></div>
+          <div class="card-footer"><div class="card-pricing"><span class="price-current">650 ₽</span></div><button class="add-to-cart">В корзину</button></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="product-card" data-category="Листовые" data-price="1360" data-name="Замиокулькас" data-img="https://images.unsplash.com/photo-1520412099551-62b6bafeb5bb?w=500&auto=format&fit=crop&q=80" data-latin="Zamioculcas zamiifolia">
+      <div class="card-inner">
+        <div class="card-media">
+          <img src="https://images.unsplash.com/photo-1520412099551-62b6bafeb5bb?w=500&auto=format&fit=crop&q=80" alt="Замиокулькас" loading="lazy"/>
+          <div class="card-badges"><span class="badge badge-sale">−15%</span></div>
+          <button class="card-wishlist"><svg width="16" height="16" fill="none" stroke="#333" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+          <div class="card-quick-add"><button class="quick-add-btn">Быстро добавить</button></div>
+          <div class="card-shine"></div>
+        </div>
+        <div class="card-body">
+          <p class="card-category">Листовые</p><h2 class="card-name">Замиокулькас</h2>
+          <p class="card-latin">Zamioculcas zamiifolia</p>
+          <div class="card-meta"><span class="care-icon">🌿 Лёгкий уход</span></div>
+          <div class="card-footer"><div class="card-pricing"><span class="price-current">1 360 ₽</span><span class="price-old">1 600 ₽</span></div><button class="add-to-cart">В корзину</button></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="product-card" data-category="Суккуленты" data-price="480" data-name="Алоэ вера" data-img="https://images.unsplash.com/photo-1459156212016-c812468e2115?w=500&auto=format&fit=crop&q=80" data-latin="Aloe barbadensis">
+      <div class="card-inner">
+        <div class="card-media">
+          <img src="https://images.unsplash.com/photo-1459156212016-c812468e2115?w=500&auto=format&fit=crop&q=80" alt="Алоэ вера" loading="lazy"/>
+          <button class="card-wishlist"><svg width="16" height="16" fill="none" stroke="#333" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>
+          <div class="card-quick-add"><button class="quick-add-btn">Быстро добавить</button></div>
+          <div class="card-shine"></div>
+        </div>
+        <div class="card-body">
+          <p class="card-category">Суккуленты</p><h2 class="card-name">Алоэ вера</h2>
+          <p class="card-latin">Aloe barbadensis</p>
+          <div class="card-meta"><span class="care-icon">🌿 Лёгкий уход</span></div>
+          <div class="card-footer"><div class="card-pricing"><span class="price-current">480 ₽</span></div><button class="add-to-cart">В корзину</button></div>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <div class="catalog-footer">
+    <span class="items-count" id="itemsCount">Показано 8 из 34 товаров</span>
+    <button class="load-more-btn" id="loadMoreBtn">Загрузить ещё</button>
+  </div>
+</section>
+</div>
+
+<!-- ════ PAGE: ABOUT ════ -->
+<div class="page" id="page-about">
+  <div class="about-hero">
+    <div class="about-hero-inner">
+      <p class="eyebrow">Наша история</p>
+      <h1 class="page-title">Мы любим растения так же, как вы</h1>
+      <p class="page-sub">С 2019 года мы помогаем людям создавать живые уголки природы дома и в офисе. Каждое растение — с заботой и знанием.</p>
+    </div>
+  </div>
+  <div class="about-content">
+    <div class="about-stats">
+      <div class="stat-item"><span class="stat-num" data-count="12000">0</span><div class="stat-label">довольных покупателей</div></div>
+      <div class="stat-item"><span class="stat-num" data-count="340">0</span><div class="stat-label">видов растений</div></div>
+      <div class="stat-item"><span class="stat-num" data-count="6">0</span><div class="stat-label">лет на рынке</div></div>
+    </div>
+    <div class="about-grid">
+      <div class="about-img"><img src="https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?w=800&auto=format&fit=crop&q=80" alt="Наша оранжерея"/></div>
+      <div class="about-text">
+        <h2>Откуда приходят наши растения</h2>
+        <p>Мы работаем напрямую с тепличными хозяйствами в Нидерландах, Италии и Колумбии. Каждая партия проходит карантин и фитосанитарный контроль.</p>
+        <p>Растения адаптируются в наших московских теплицах минимум 2 недели перед отправкой — чтобы ваше новое растение легко прижилось дома.</p>
+      </div>
+    </div>
+    <div class="about-grid reverse">
+      <div class="about-img"><img src="https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&auto=format&fit=crop&q=80" alt="Уход за растениями"/></div>
+      <div class="about-text">
+        <h2>Гарантия приживаемости</h2>
+        <p>Если ваше растение погибает в первые 30 дней по нашей вине — мы бесплатно заменим его. Просто напишите нам с фото.</p>
+        <p>К каждому заказу прикладываем карточку ухода с персональными рекомендациями под ваш тип освещения и температуру в квартире.</p>
+      </div>
+    </div>
+    <h2 style="font-family:'Playfair Display',serif;font-size:32px;font-weight:400;margin-bottom:32px">Наша команда</h2>
+    <div class="team-grid">
+      <div class="team-card">
+        <div class="team-img"><img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&auto=format&fit=crop&q=80" alt="Анна"/></div>
+        <div class="team-info"><div class="team-name">Анна Соколова</div><div class="team-role">Основатель & ботаник</div><div class="team-bio">15 лет в ботанике. Лично отбирает каждый вид для каталога.</div></div>
+      </div>
+      <div class="team-card">
+        <div class="team-img"><img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&auto=format&fit=crop&q=80" alt="Михаил"/></div>
+        <div class="team-info"><div class="team-name">Михаил Орлов</div><div class="team-role">Агроном</div><div class="team-bio">Следит за качеством и здоровьем каждого растения в питомнике.</div></div>
+      </div>
+      <div class="team-card">
+        <div class="team-img"><img src="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400&auto=format&fit=crop&q=80" alt="Лена"/></div>
+        <div class="team-info"><div class="team-name">Елена Ким</div><div class="team-role">Дизайнер интерьера</div><div class="team-bio">Помогает клиентам подобрать растения под стиль и освещение.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE: CARE ════ -->
+<div class="page" id="page-care">
+  <div class="care-hero">
+    <p class="eyebrow">Советы эксперта</p>
+    <h1 class="page-title">Как ухаживать за растениями</h1>
+    <p class="page-sub" style="max-width:520px;margin:14px auto 0;color:var(--muted)">Простые правила, которые помогут вашим растениям цвести и радовать вас годами.</p>
+  </div>
+  <div class="care-content">
+    <div class="care-grid">
+      <div class="care-card">
+        <div class="care-icon-big"><svg width="28" height="28" fill="none" stroke="var(--accent)" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12"/><path d="M12 6v6l4 2"/></svg></div>
+        <h3>Полив</h3>
+        <p>Проверяйте почву пальцем — поливайте только когда верхние 2–3 см сухие. Большинство комнатных растений погибают от перелива, а не от засухи.</p>
+      </div>
+      <div class="care-card">
+        <div class="care-icon-big"><svg width="28" height="28" fill="none" stroke="var(--accent)" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg></div>
+        <h3>Освещение</h3>
+        <p>Яркий рассеянный свет — золотой стандарт для большинства тропических растений. Избегайте прямых полуденных лучей — они могут обжечь листья.</p>
+      </div>
+      <div class="care-card">
+        <div class="care-icon-big"><svg width="28" height="28" fill="none" stroke="var(--accent)" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22V12M12 12C12 6.48 7.52 2 2 2c0 5.52 4.48 10 10 10zM12 12c0-5.52 4.48-10 10-10 0 5.52-4.48 10-10 10z"/></svg></div>
+        <h3>Влажность</h3>
+        <p>Тропическим растениям нужна влажность 50–70%. Опрыскивайте листья, используйте поддон с галькой и водой или увлажнитель воздуха.</p>
+      </div>
+      <div class="care-card">
+        <div class="care-icon-big"><svg width="28" height="28" fill="none" stroke="var(--accent)" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18.4 9a9 9 0 0 1-12.77 8.5"/></svg></div>
+        <h3>Удобрение</h3>
+        <p>С марта по октябрь подкармливайте комплексным удобрением раз в 2–3 недели. Зимой растения отдыхают — удобрения не нужны.</p>
+      </div>
+      <div class="care-card">
+        <div class="care-icon-big"><svg width="28" height="28" fill="none" stroke="var(--accent)" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2M8 7V5a2 2 0 0 0-4 0"/></svg></div>
+        <h3>Пересадка</h3>
+        <p>Пересаживайте весной, когда корни заполнили горшок. Новый горшок должен быть на 2–3 см шире предыдущего — слишком большой замедляет рост.</p>
+      </div>
+      <div class="care-card">
+        <div class="care-icon-big"><svg width="28" height="28" fill="none" stroke="var(--accent)" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
+        <h3>Вредители</h3>
+        <p>Осматривайте растения раз в неделю. При первых признаках — изолируйте растение и обработайте мыльным раствором или специальным препаратом.</p>
+      </div>
+    </div>
+    <div class="care-tips">
+      <h2>10 золотых правил</h2>
+      <div class="tip-list">
+        <div class="tip-item"><div class="tip-num">01</div><div class="tip-body"><h4>Изучите растение перед покупкой</h4><p>Каждый вид имеет свои требования. Убедитесь, что условия вашего дома подходят.</p></div></div>
+        <div class="tip-item"><div class="tip-num">02</div><div class="tip-body"><h4>Не переливайте</h4><p>Перелив — причина №1 гибели растений. Лучше полить реже, чем чаще.</p></div></div>
+        <div class="tip-item"><div class="tip-num">03</div><div class="tip-body"><h4>Обеспечьте дренаж</h4><p>Горшок должен иметь дренажные отверстия. Застой воды губителен для корней.</p></div></div>
+        <div class="tip-item"><div class="tip-num">04</div><div class="tip-body"><h4>Протирайте листья</h4><p>Пыль на листьях мешает фотосинтезу. Протирайте влажной тряпкой раз в месяц.</p></div></div>
+        <div class="tip-item"><div class="tip-num">05</div><div class="tip-body"><h4>Поворачивайте горшок</h4><p>Раз в неделю поворачивайте растение — оно будет расти равномерно, а не тянуться к свету.</p></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PAGE: DELIVERY ════ -->
+<div class="page" id="page-delivery">
+  <div class="delivery-hero">
+    <p class="eyebrow">Доставка и оплата</p>
+    <h1 class="page-title">Доставим бережно<br>по всей России</h1>
+    <p class="page-sub">Специальная упаковка для растений, климатический контроль и страховка каждого заказа.</p>
+  </div>
+  <div class="delivery-content">
+
+    <h2 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:400;margin-bottom:28px">Зоны доставки</h2>
+    <div class="delivery-zones" id="deliveryZones">
+      <div class="zone-card selected" data-zone="moscow" data-price="290" data-days="1-2">
+        <div class="zone-tag">Экспресс</div>
+        <div class="zone-name">Москва и МО</div>
+        <div class="zone-price">290 ₽</div>
+        <div class="zone-details">Доставка 1–2 дня<br>Курьером до двери<br>Бесплатно от 3 000 ₽</div>
+      </div>
+      <div class="zone-card" data-zone="russia" data-price="490" data-days="3-7">
+        <div class="zone-tag">Стандарт</div>
+        <div class="zone-name">Россия</div>
+        <div class="zone-price">490 ₽</div>
+        <div class="zone-details">Доставка 3–7 дней<br>СДЭК или Boxberry<br>Бесплатно от 5 000 ₽</div>
+      </div>
+      <div class="zone-card" data-zone="remote" data-price="890" data-days="7-14">
+        <div class="zone-tag">Удалённые</div>
+        <div class="zone-name">Сибирь, ДВ, Север</div>
+        <div class="zone-price">890 ₽</div>
+        <div class="zone-details">Доставка 7–14 дней<br>Авиа или ЖД<br>Спецупаковка включена</div>
+      </div>
+    </div>
+
+    <div class="delivery-calc">
+      <h2>Калькулятор стоимости</h2>
+      <div class="calc-form">
+        <div class="form-group">
+          <label>Город получателя</label>
+          <input type="text" id="calcCity" placeholder="Например: Новосибирск"/>
+        </div>
+        <div class="form-group">
+          <label>Количество растений</label>
+          <input type="number" id="calcQty" min="1" max="20" value="1"/>
+        </div>
+        <div class="form-group">
+          <label>Сумма заказа (₽)</label>
+          <input type="number" id="calcSum" min="0" placeholder="3500"/>
+        </div>
+        <div class="form-group">
+          <label>Способ доставки</label>
+          <select id="calcMethod">
+            <option value="courier">Курьер до двери</option>
+            <option value="pickup">Пункт выдачи</option>
+            <option value="post">Почта России</option>
+          </select>
+        </div>
+        <button class="calc-btn" onclick="calcDelivery()">Рассчитать стоимость</button>
+      </div>
+      <div class="calc-result" id="calcResult">
+        <div class="calc-result-row"><span>Доставка</span><span id="calcDeliveryPrice">—</span></div>
+        <div class="calc-result-row"><span>Упаковка</span><span id="calcPackPrice">—</span></div>
+        <div class="calc-result-row"><span>Страховка</span><span id="calcInsPrice">—</span></div>
+        <div class="calc-result-row total"><span>Итого к оплате</span><span id="calcTotalPrice">—</span></div>
+      </div>
+    </div>
+
+    <div class="delivery-track">
+      <h2>Отследить заказ</h2>
+      <p>Введите номер заказа — мы покажем, где сейчас ваши растения.</p>
+      <div class="track-input-row">
+        <input class="track-input" id="trackInput" placeholder="Например: BT-2025-04812" maxlength="20"/>
+        <button class="track-btn" onclick="trackOrder()">Отследить</button>
+      </div>
+      <div class="track-timeline" id="trackTimeline"></div>
+    </div>
+
+    <div class="delivery-faq">
+      <h2>Частые вопросы</h2>
+      <div class="faq-item">
+        <div class="faq-q">Как вы упаковываете растения? <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+        <div class="faq-a">Каждое растение помещается в индивидуальный эко-рукав, который фиксирует земляной ком. Горшок закрепляется в коробке с подушками из биоразлагаемого материала. Для хрупких видов — дополнительный защитный слой пузырчатой плёнки.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Что если растение пострадает при доставке? <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+        <div class="faq-a">Сфотографируйте повреждения сразу при получении и напишите нам в течение 24 часов. Мы вышлем замену бесплатно или вернём деньги — на ваш выбор.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Можно ли забрать самовывозом? <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+        <div class="faq-a">Да! Наш шоурум и пункт самовывоза находится по адресу: Москва, Тимирязевская ул. 42, стр. 2. Режим работы: пн–сб 10:00–19:00, вс 11:00–17:00.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Какие способы оплаты доступны? <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+        <div class="faq-a">Принимаем карты Visa/MC/МИР, СБП, наличные при самовывозе, а также рассрочку 0–0–12 через Тинькофф и Сбербанк. Оплата при получении доступна для Москвы и МО.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+// IRIS WIPE
+// ══════════════════════════════════════
+const irisCircle = document.getElementById('irisCircle');
+const irisRect   = document.getElementById('irisRect');
+let irisRunning  = false;
+
+function irisWipe(cb) {
+  if (irisRunning) { cb(); return; }
+  irisRunning = true;
+  irisRect.setAttribute('opacity','1');
+
+  // expand
+  const dur = 520;
+  const start = performance.now();
+  function expand(t) {
+    const p = Math.min((t - start) / dur, 1);
+    const ease = p < .5 ? 2*p*p : -1+(4-2*p)*p;
+    irisCircle.setAttribute('r', ease * 1.5);
+    if (p < 1) requestAnimationFrame(expand);
+    else { cb(); collapse(); }
+  }
+  requestAnimationFrame(expand);
+}
+
+function collapse() {
+  const dur = 420;
+  const start = performance.now();
+  function go(t) {
+    const p = Math.min((t - start) / dur, 1);
+    const ease = p * (2 - p);
+    irisCircle.setAttribute('r', (1 - ease) * 1.5);
+    if (p < 1) requestAnimationFrame(go);
+    else { irisRect.setAttribute('opacity','0'); irisRunning = false; }
+  }
+  requestAnimationFrame(go);
+}
+
+// ══════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════
+let currentPage = 'catalog';
+
+function navigateTo(page) {
+  if (page === currentPage) return;
+  irisWipe(() => {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    document.querySelectorAll('[data-nav]').forEach(a => {
+      a.classList.toggle('active', a.dataset.nav === page);
+    });
+    currentPage = page;
+    window.scrollTo(0,0);
+    if (page === 'about') animateStats();
+  });
+}
+
+document.querySelectorAll('[data-nav]').forEach(el => {
+  el.addEventListener('click', e => { e.preventDefault(); navigateTo(el.dataset.nav); });
+});
+
+// ══════════════════════════════════════
+// CART
+// ══════════════════════════════════════
+const cart = new Map();
+
+function cartTotal() { let s=0; cart.forEach(i=>s+=i.price*i.qty); return s; }
+function cartSize()  { let n=0; cart.forEach(i=>n+=i.qty); return n; }
+
+function updateCartUI() {
+  const n = cartSize(), el = document.getElementById('cartCount');
+  el.textContent = n;
+  n === 0 ? el.classList.add('hidden') : el.classList.remove('hidden');
+  renderDrawer();
+}
+
+function addToCart(card) {
+  const id=card.dataset.name, price=+card.dataset.price;
+  if (cart.has(id)) cart.get(id).qty++;
+  else cart.set(id,{name:card.dataset.name,latin:card.dataset.latin,price,img:card.dataset.img,qty:1});
+  updateCartUI();
+  bumpBadge();
+  showToast(card.dataset.name + ' добавлена в корзину 🌿','green');
+}
+
+function bumpBadge() {
+  const el = document.getElementById('cartCount');
+  el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+}
+
+function renderDrawer() {
+  const body=document.getElementById('drawerBody'), foot=document.getElementById('drawerFoot');
+  const empty=document.getElementById('drawerEmpty'), total=document.getElementById('drawerTotal');
+  if (!cart.size) { body.innerHTML=''; body.appendChild(empty); foot.style.display='none'; return; }
+  foot.style.display='block'; body.innerHTML='';
+  cart.forEach((item,id) => {
+    const div=document.createElement('div'); div.className='cart-item';
+    div.innerHTML=`
+      <img class="cart-item-img" src="${item.img}" alt="${item.name}"/>
+      <div class="cart-item-info">
+        <div class="cart-item-name">${item.name}</div>
+        <div class="cart-item-latin">${item.latin}</div>
+        <div class="cart-item-row">
+          <span class="cart-item-price">${(item.price*item.qty).toLocaleString('ru')} ₽</span>
+          <div class="qty-ctrl">
+            <button class="qty-btn" data-id="${id}" data-a="dec">−</button>
+            <span class="qty-val">${item.qty}</span>
+            <button class="qty-btn" data-id="${id}" data-a="inc">+</button>
+          </div>
+        </div>
+      </div>
+      <button class="item-remove" data-id="${id}"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`;
+    body.appendChild(div);
+  });
+  total.textContent = cartTotal().toLocaleString('ru') + ' ₽';
+  body.querySelectorAll('.qty-btn').forEach(b => b.addEventListener('click', () => {
+    const item=cart.get(b.dataset.id);
+    b.dataset.a==='inc' ? item.qty++ : item.qty--;
+    if (item.qty<=0) cart.delete(b.dataset.id);
+    updateCartUI();
+  }));
+  body.querySelectorAll('.item-remove').forEach(b => b.addEventListener('click', () => { cart.delete(b.dataset.id); updateCartUI(); }));
+}
+
+document.getElementById('cartBtn').addEventListener('click', () => {
+  document.getElementById('cartDrawer').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+});
+function closeDrawer() {
+  document.getElementById('cartDrawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+
+// ══════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════
+function showToast(msg, type='') {
+  const stack=document.getElementById('toastStack');
+  const t=document.createElement('div'); t.className='toast'+(type?' '+type:''); t.textContent=msg;
+  stack.appendChild(t);
+  setTimeout(()=>{ t.classList.add('out'); setTimeout(()=>t.remove(),300); }, 2200);
+}
+
+// ══════════════════════════════════════
+// CARD WIRING
+// ══════════════════════════════════════
+function wireCard(card) {
+  card.querySelector('.add-to-cart').addEventListener('click', e => {
+    e.stopPropagation(); addToCart(card);
+    const b=e.currentTarget; b.classList.add('added'); b.textContent='Добавлено ✓';
+    setTimeout(()=>{ b.classList.remove('added'); b.textContent='В корзину'; },1800);
+  });
+  const qa=card.querySelector('.quick-add-btn');
+  if (qa) qa.addEventListener('click', e=>{ e.stopPropagation(); addToCart(card); });
+  const wl=card.querySelector('.card-wishlist');
+  wl.addEventListener('click', e=>{
+    e.stopPropagation(); wl.classList.toggle('liked');
+    showToast(wl.classList.contains('liked') ? card.dataset.name+' в избранном ♡' : card.dataset.name+' убрана');
+  });
+  init3D(card);
+}
+document.querySelectorAll('.product-card').forEach(wireCard);
+
+// ══════════════════════════════════════
+// FILTERS + SORT
+// ══════════════════════════════════════
+let activeFilter='all';
+document.getElementById('filters').addEventListener('click', e=>{
+  const btn=e.target.closest('.filter-btn'); if (!btn) return;
+  activeFilter=btn.dataset.filter;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.toggle('active',b===btn));
+  applyFilterSort();
+});
+document.getElementById('sortSelect').addEventListener('change', applyFilterSort);
+
+function applyFilterSort() {
+  const cards=[...document.querySelectorAll('.product-card')];
+  const sort=document.getElementById('sortSelect').value;
+  const visible=cards.filter(c=>{ const m=activeFilter==='all'||c.dataset.category===activeFilter; c.classList.toggle('hidden',!m); return m; });
+  const grid=document.getElementById('productGrid');
+  if (sort==='price-asc') visible.sort((a,b)=>+a.dataset.price - +b.dataset.price);
+  else if (sort==='price-desc') visible.sort((a,b)=>+b.dataset.price - +a.dataset.price);
+  else if (sort==='name') visible.sort((a,b)=>a.dataset.name.localeCompare(b.dataset.name,'ru'));
+  else visible.sort((a,b)=>cards.indexOf(a)-cards.indexOf(b));
+  visible.forEach(c=>grid.appendChild(c));
+  document.getElementById('itemsCount').textContent=`Показано ${visible.length} из 34 товаров`;
+}
+
+// ══════════════════════════════════════
+// LOAD MORE
+// ══════════════════════════════════════
+const extras=[
+  {name:'Аглаонема',latin:'Aglaonema commutatum',category:'Листовые',price:1290,img:'https://images.unsplash.com/photo-1598880940080-ff9a29891b85?w=500&auto=format&fit=crop&q=80',badge:'new'},
+  {name:'Сансевиерия',latin:'Sansevieria trifasciata',category:'Листовые',price:790,img:'https://images.unsplash.com/photo-1572688484438-313a6e50c333?w=500&auto=format&fit=crop&q=80',badge:''},
+  {name:'Каланхоэ',latin:'Kalanchoe blossfeldiana',category:'Цветущие',price:550,img:'https://images.unsplash.com/photo-1512428813834-c702c7702b78?w=500&h=667&auto=format&fit=crop&crop=entropy&q=80',badge:'sale'},
+  {name:'Хавортия',latin:'Haworthia fasciata',category:'Суккуленты',price:680,img:'https://images.unsplash.com/photo-1509423350716-97f9360b4e09?w=500&h=667&auto=format&fit=crop&crop=entropy&q=80',badge:''},
+];
+let extraLoaded=false;
+document.getElementById('loadMoreBtn').addEventListener('click',()=>{
+  if (extraLoaded) { showToast('Все товары загружены 🌿'); document.getElementById('loadMoreBtn').disabled=true; return; }
+  extraLoaded=true;
+  const grid=document.getElementById('productGrid');
+  extras.forEach(p=>{
+    const art=document.createElement('article');
+    art.className='product-card'; art.dataset.category=p.category; art.dataset.price=p.price;
+    art.dataset.name=p.name; art.dataset.img=p.img; art.dataset.latin=p.latin;
+    const badgeHtml=p.badge==='new'?`<div class="card-badges"><span class="badge badge-new">Новинка</span></div>`:p.badge==='sale'?`<div class="card-badges"><span class="badge badge-sale">Акция</span></div>`:'';
+    art.innerHTML=`<div class="card-inner"><div class="card-media"><img src="${p.img}" alt="${p.name}" loading="lazy"/>${badgeHtml}<button class="card-wishlist"><svg width="16" height="16" fill="none" stroke="#333" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button><div class="card-quick-add"><button class="quick-add-btn">Быстро добавить</button></div><div class="card-shine"></div></div><div class="card-body"><p class="card-category">${p.category}</p><h2 class="card-name">${p.name}</h2><p class="card-latin">${p.latin}</p><div class="card-footer"><div class="card-pricing"><span class="price-current">${p.price.toLocaleString('ru')} ₽</span></div><button class="add-to-cart">В корзину</button></div></div></div>`;
+    wireCard(art); grid.appendChild(art);
+  });
+  document.getElementById('itemsCount').textContent='Показано 12 из 34 товаров';
+  showToast('Загружено ещё 4 растения 🌿','green');
+  document.getElementById('loadMoreBtn').textContent='Загрузить ещё раз';
+  applyFilterSort();
+});
+
+// ══════════════════════════════════════
+// 3D TILT
+// ══════════════════════════════════════
+function init3D(card) {
+  if (window.matchMedia('(max-width:780px)').matches) return;
+  let tRX=0,tRY=0,cRX=0,cRY=0,raf=null;
+  const shine=card.querySelector('.card-shine');
+  card.addEventListener('mousemove',e=>{
+    const r=card.getBoundingClientRect(), x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
+    tRY=(x-.5)*28; tRX=-(y-.5)*28;
+    if (shine) shine.style.background=`radial-gradient(circle at ${x*100}% ${y*100}%,rgba(255,255,255,.3) 0%,transparent 65%)`;
+    if (!raf) raf=requestAnimationFrame(tick);
+  });
+  card.addEventListener('mouseleave',()=>{ tRX=tRY=0; if (!raf) raf=requestAnimationFrame(tick); });
+  function tick() {
+    cRX+=(tRX-cRX)*.1; cRY+=(tRY-cRY)*.1;
+    card.style.transform=`rotateX(${cRX}deg) rotateY(${cRY}deg)`;
+    if (Math.abs(cRX-tRX)+Math.abs(cRY-tRY)>.05) raf=requestAnimationFrame(tick);
+    else { card.style.transform=`rotateX(${tRX}deg) rotateY(${tRY}deg)`; raf=null; }
+  }
+}
+
+// ══════════════════════════════════════
+// PARALLAX BLOBS
+// ══════════════════════════════════════
+(()=>{
+  const canvas=document.getElementById('parallax-canvas');
+  const blobs=[
+    {x:8,y:12,size:380,speed:.018,color:'rgba(45,106,79,.07)'},
+    {x:82,y:8,size:240,speed:.03,color:'rgba(64,145,108,.06)'},
+    {x:55,y:75,size:200,speed:.023,color:'rgba(29,67,50,.05)'},
+    {x:18,y:65,size:290,speed:.016,color:'rgba(45,106,79,.05)'},
+  ];
+  let W,H,mx=0,my=0,ctx;
+  const offs=blobs.map(()=>({x:0,y:0}));
+  function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight;ctx=canvas.getContext('2d')}
+  resize(); addEventListener('resize',resize);
+  addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY});
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const cx=mx/W-.5, cy=my/H-.5;
+    blobs.forEach((b,i)=>{
+      offs[i].x+=(cx*W*b.speed*60-offs[i].x)*.06;
+      offs[i].y+=(cy*H*b.speed*60-offs[i].y)*.06;
+      const px=b.x/100*W+offs[i].x, py=b.y/100*H+offs[i].y, r=b.size/2;
+      const g=ctx.createRadialGradient(px,py,0,px,py,r);
+      g.addColorStop(0,b.color); g.addColorStop(1,'transparent');
+      ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ══════════════════════════════════════
+// DELIVERY ZONES
+// ══════════════════════════════════════
+document.querySelectorAll('.zone-card').forEach(card=>{
+  card.addEventListener('click',()=>{
+    document.querySelectorAll('.zone-card').forEach(c=>c.classList.remove('selected'));
+    card.classList.add('selected');
+    showToast('Зона: '+card.querySelector('.zone-name').textContent+' — '+card.dataset.price+' ₽','green');
+  });
+});
+
+function calcDelivery(){
+  const city=document.getElementById('calcCity').value.trim();
+  const qty=+document.getElementById('calcQty').value||1;
+  const sum=+document.getElementById('calcSum').value||0;
+  const method=document.getElementById('calcMethod').value;
+  if (!city) { showToast('Введите город','red'); return; }
+
+  const isMoscow=/москва|мо|подмосковь/i.test(city);
+  let base = isMoscow ? 290 : /сибирь|якутск|магадан|владивосток|хабаровск|дальн/i.test(city) ? 890 : 490;
+  if (method==='pickup') base=Math.max(base-100,0);
+  if (method==='post') base=Math.max(base-50,0);
+  const free = isMoscow ? 3000 : 5000;
+  if (sum>=free) base=0;
+
+  const pack = qty<=2 ? 0 : (qty-2)*80;
+  const ins  = Math.round(sum*0.015)||0;
+  const total = base+pack+ins;
+
+  document.getElementById('calcDeliveryPrice').textContent=base===0?'Бесплатно':base.toLocaleString('ru')+' ₽';
+  document.getElementById('calcPackPrice').textContent=pack===0?'Включена':pack.toLocaleString('ru')+' ₽';
+  document.getElementById('calcInsPrice').textContent=ins===0?'Бесплатно':ins.toLocaleString('ru')+' ₽';
+  document.getElementById('calcTotalPrice').textContent=total.toLocaleString('ru')+' ₽';
+  document.getElementById('calcResult').classList.add('show');
+}
+
+// ══════════════════════════════════════
+// ORDER TRACKING
+// ══════════════════════════════════════
+function trackOrder(){
+  const num=document.getElementById('trackInput').value.trim();
+  if (!num) { showToast('Введите номер заказа','red'); return; }
+  const tl=document.getElementById('trackTimeline');
+  const steps=[
+    {done:true,active:false,label:'Заказ принят',date:'28 июн, 14:32'},
+    {done:true,active:false,label:'Растения подготовлены',date:'29 июн, 10:15'},
+    {done:true,active:false,label:'Передано в службу доставки',date:'29 июн, 16:40'},
+    {done:false,active:true, label:'В пути к вам',date:'Ожидается 1 июл'},
+    {done:false,active:false,label:'Доставлено',date:'—'},
+  ];
+  tl.innerHTML=steps.map(s=>`
+    <div class="track-step">
+      <div class="track-dot ${s.done?'done':s.active?'active':''}">
+        ${s.done?`<svg width="12" height="12" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>`:s.active?`<svg width="12" height="12" fill="none" stroke="var(--accent)" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/></svg>`:`<svg width="12" height="12" fill="none" stroke="#ccc" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/></svg>`}
+      </div>
+      <div class="track-body"><h4>${s.label}</h4><p>${s.date}</p></div>
+    </div>`).join('');
+  tl.classList.add('show');
+  showToast('Заказ '+num+' найден 📦','green');
+}
+
+// ══════════════════════════════════════
+// FAQ ACCORDION
+// ══════════════════════════════════════
+document.querySelectorAll('.faq-q').forEach(q=>{
+  q.addEventListener('click',()=>{
+    const item=q.closest('.faq-item'), open=item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'));
+    if (!open) item.classList.add('open');
+  });
+});
+
+// ══════════════════════════════════════
+// STATS COUNTER ANIMATION
+// ══════════════════════════════════════
+function animateStats(){
+  document.querySelectorAll('[data-count]').forEach(el=>{
+    const target=+el.dataset.count, dur=1200, start=performance.now();
+    function go(t){
+      const p=Math.min((t-start)/dur,1), ease=1-Math.pow(1-p,3);
+      el.textContent=Math.round(ease*target).toLocaleString('ru');
+      if (p<1) requestAnimationFrame(go);
+    }
+    requestAnimationFrame(go);
+  });
+}
+</script>
+</body>
+</html>
